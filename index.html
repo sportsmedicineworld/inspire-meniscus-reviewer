@@ -208,10 +208,11 @@
     width: 27px; height: 27px; border-radius: 6px; padding: 0;
     display: flex; align-items: center; justify-content: center;
     font-family: "DM Mono", monospace; font-size: 10.5px; font-weight: 700;
-    cursor: pointer; border: 1.5px solid transparent; color: #fff;
+    cursor: default; border: 1.5px solid transparent; color: #fff;
     background: var(--coral);
   }
   .legend-chip.answered { background: var(--ok); }
+  .legend-chip.partial { background: #E8A33D; }
   .legend-chip.current { outline: 2px solid var(--ink); outline-offset: 1.5px; }
   @media (max-width: 860px) { .case-legend { padding: 10px 18px; } }
 
@@ -1334,25 +1335,29 @@ function refreshSidebarState() {
 // Quick-jump legend shown above every case (unlike the sidebar case list,
 // this stays visible on mobile, where the sidebar is hidden). Green =
 // answered, red = not answered yet, outlined = the case you're on now.
+// Quick-glance progress strip shown above every case (unlike the sidebar
+// case list, this stays visible on mobile, where the sidebar is hidden).
+// Green = answered, amber = started but not finished, red = not started.
+// These are display-only — no click-to-jump — because jumping ahead let
+// reviewers skip past unfinished follow-up questions without ever
+// triggering the "please complete this" validation that "Save & next
+// case" enforces. The only ways to move between cases are Previous case
+// and Save & next case.
 function renderCaseLegend() {
   const el = document.getElementById('case-legend');
   if (!el) return;
   el.innerHTML = CASES.map((c, i) => {
-    const answered = isResponseAnswered(responses[c.num]);
+    const resp = responses[c.num];
+    const answered = isResponseAnswered(resp);
+    const partial = !answered && !!(resp && resp.primary);
     const isCurrent = i === currentIdx;
     const cls = ['legend-chip'];
     if (answered) cls.push('answered');
+    else if (partial) cls.push('partial');
     if (isCurrent) cls.push('current');
-    const label = 'Case ' + c.num + (answered ? ' — answered' : ' — not answered yet');
-    return `<button type="button" class="${cls.join(' ')}" data-idx="${i}" title="${label}" aria-label="${label}">${c.num}</button>`;
+    const label = 'Case ' + c.num + (answered ? ' — answered' : partial ? ' — started, not finished' : ' — not answered yet');
+    return `<span class="${cls.join(' ')}" title="${label}" aria-label="${label}">${c.num}</span>`;
   }).join('');
-  el.querySelectorAll('.legend-chip').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      currentIdx = parseInt(btn.dataset.idx, 10);
-      renderCase();
-      document.getElementById('main').scrollTo(0, 0);
-    });
-  });
 }
 
 // ---------- Case render ----------
